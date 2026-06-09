@@ -14,20 +14,20 @@
         <div id="startOverlay" class="overlay">
           <div class="dialog">
             <p class="eyebrow">Territory Conquest</p>
-            <h1>Choose your front line</h1>
-            <p class="lede">Pick a starting land, build strength, split armies, retreat from bad fights, and push for total control.</p>
+            <h1>Pixel world domination</h1>
+            <p class="lede">Choose a front, build pressure, and outplay bots or a peer-to-peer rival.</p>
             <div class="mode-grid">
               <button class="mode-card is-active" id="singleBtn" type="button">
-                <span>Single Player</span>
-                <small>Fight adaptive bots</small>
+                <span>Solo</span>
+                <small>Bots</small>
               </button>
               <button class="mode-card" id="hostBtn" type="button">
-                <span>Host P2P Game</span>
-                <small>Create a join code</small>
+                <span>Host</span>
+                <small>Join code</small>
               </button>
               <button class="mode-card" id="joinBtn" type="button">
-                <span>Join P2P Game</span>
-                <small>Paste a host code</small>
+                <span>Join</span>
+                <small>Paste code</small>
               </button>
             </div>
             <button id="startBtn" class="primary-action" type="button">Start Match</button>
@@ -36,71 +36,56 @@
       </section>
 
       <aside class="control-panel" aria-label="Game controls">
-        <div class="panel-header">
+        <header class="panel-header">
           <div>
-            <p class="eyebrow">Command</p>
+            <p class="eyebrow">Command Center</p>
             <h2 id="phaseTitle">Setup</h2>
           </div>
           <div id="connectionPill" class="pill">Offline</div>
-        </div>
+        </header>
 
-        <div class="stat-grid">
-          <div>
-            <span>Territory</span>
-            <strong id="territoryStat">0%</strong>
-          </div>
-          <div>
-            <span>Army</span>
-            <strong id="armyStat">0</strong>
-          </div>
-          <div>
-            <span>Groups</span>
-            <strong id="groupsStat">0</strong>
-          </div>
-          <div>
-            <span>Tick</span>
-            <strong id="tickStat">0</strong>
-          </div>
-        </div>
+        <section class="stat-strip" aria-label="Match stats">
+          <div><span>Land</span><strong id="territoryStat">0%</strong></div>
+          <div><span>Army</span><strong id="armyStat">0</strong></div>
+          <div><span>Units</span><strong id="groupsStat">0</strong></div>
+          <div><span>Tick</span><strong id="tickStat">0</strong></div>
+        </section>
 
-        <section class="control-section">
-          <h3>Army Split</h3>
-          <div class="segmented" id="splitButtons">
+        <section class="control-section compact-section">
+          <div class="section-title">
+            <h3>Orders</h3>
+            <button id="retreatBtn" class="danger-action" type="button">Retreat</button>
+          </div>
+          <div class="segmented" id="splitButtons" aria-label="Army split amount">
             <button type="button" data-split="0.25">25%</button>
             <button type="button" data-split="0.5" class="is-active">50%</button>
             <button type="button" data-split="0.75">75%</button>
             <button type="button" data-split="1">All</button>
           </div>
-          <button id="retreatBtn" class="secondary-action" type="button">Retreat Selected Group</button>
         </section>
 
         <section class="control-section">
-          <h3>Upgrades</h3>
+          <div class="section-title"><h3>Upgrades</h3></div>
           <div class="upgrade-list" id="upgradeList"></div>
         </section>
 
-        <section class="control-section network-panel">
-          <h3>Join Code Multiplayer</h3>
+        <details class="control-section network-panel">
+          <summary>Join Code Multiplayer</summary>
           <div class="network-actions">
-            <button id="copyOfferBtn" type="button">Create Host Code</button>
-            <button id="acceptAnswerBtn" type="button">Accept Answer</button>
-            <button id="createAnswerBtn" type="button">Create Answer</button>
+            <button id="copyOfferBtn" type="button">Host Code</button>
+            <button id="createAnswerBtn" type="button">Answer Code</button>
+            <button id="acceptAnswerBtn" type="button">Accept</button>
           </div>
           <label>
-            Incoming code
-            <textarea id="incomingCode" rows="5" spellcheck="false"></textarea>
+            Incoming
+            <textarea id="incomingCode" rows="4" spellcheck="false"></textarea>
           </label>
           <label>
-            Outgoing code
-            <textarea id="outgoingCode" rows="5" readonly spellcheck="false"></textarea>
+            Outgoing
+            <textarea id="outgoingCode" rows="4" readonly spellcheck="false"></textarea>
           </label>
-          <p id="networkStatus" class="hint">P2P uses browser WebRTC. Exchange codes by chat, doc, or projector.</p>
-        </section>
-
-        <section class="control-section">
-          <h3>How To Play</h3>
-          <p class="hint">Click an empty land to start. Click your land or army, choose a split, then click a target. Use retreat when a moving group is selected.</p>
-        </section>
+          <p id="networkStatus" class="hint">Exchange codes, then play.</p>
+        </details>
       </aside>
     </main>
 

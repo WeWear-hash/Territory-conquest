@@ -3,9 +3,9 @@
 
   const WORLD_W = 1280;
   const WORLD_H = 760;
-  const COLS = 16;
-  const ROWS = 10;
-  const LAND_MARGIN = 42;
+  const COLS = 36;
+  const ROWS = 18;
+  const LAND_MARGIN = 30;
   const NEUTRAL = -1;
 
   const UPGRADES = {
@@ -55,59 +55,66 @@
 
   function createTerritories() {
     const territories = [];
-    const cellW = (WORLD_W - LAND_MARGIN * 2) / COLS;
-    const cellH = (WORLD_H - LAND_MARGIN * 2) / ROWS;
-    const occupied = new Set();
-
-    const continents = [
-      { x: 2, y: 1, w: 4, h: 4 },
-      { x: 6, y: 1, w: 3, h: 7 },
-      { x: 9, y: 2, w: 5, h: 5 },
-      { x: 3, y: 6, w: 4, h: 3 },
-      { x: 12, y: 6, w: 3, h: 3 },
-      { x: 1, y: 4, w: 2, h: 3 }
+    const cellW = Math.floor((WORLD_W - LAND_MARGIN * 2) / COLS);
+    const cellH = Math.floor((WORLD_H - LAND_MARGIN * 2) / ROWS);
+    const mapRows = [
+      "....................................",
+      ".....XXXX...........XX.XXXXXXX......",
+      "....XXXXXX.........XXXXXXXXXXXX.....",
+      "...XXXXXXX........XXXXXXXXXXXXXX....",
+      "...XXXXXX..........XXXXXXXXXXXXX....",
+      "....XXXXX..........XXXXXXXXXXXXX....",
+      ".....XXXX...........XXXXXXXXXXX.....",
+      "......XXXX..........XXXXXXXXXX......",
+      ".......XXXX..........XXXXXXX........",
+      ".......XXXXX.........XXXXXXX........",
+      "........XXXX.........XXXXXX.........",
+      ".........XXX..........XXXX..........",
+      ".........XXX...................XXX..",
+      "..........XX..................XXXXX.",
+      "..........XX...................XXX..",
+      "....................................",
+      "..................XXXXXX............",
+      "...................................."
     ];
 
-    continents.forEach((shape) => {
-      for (let yy = shape.y; yy < shape.y + shape.h; yy++) {
-        for (let xx = shape.x; xx < shape.x + shape.w; xx++) {
-          const edge = xx === shape.x || yy === shape.y || xx === shape.x + shape.w - 1 || yy === shape.y + shape.h - 1;
-          const keep = !edge || Math.random() > 0.22;
-          if (keep && xx >= 0 && yy >= 0 && xx < COLS && yy < ROWS) {
-            occupied.add(`${xx},${yy}`);
-          }
-        }
-      }
-    });
-
-    occupied.forEach((key) => {
-      const [cx, cy] = key.split(",").map(Number);
-      const jitterX = (Math.random() - 0.5) * 12;
-      const jitterY = (Math.random() - 0.5) * 12;
-      territories.push({
-        id: territories.length,
-        col: cx,
-        row: cy,
-        x: LAND_MARGIN + cx * cellW + 4 + jitterX,
-        y: LAND_MARGIN + cy * cellH + 4 + jitterY,
-        w: cellW - 8,
-        h: cellH - 8,
-        owner: NEUTRAL,
-        army: Math.floor(32 + Math.random() * 28),
-        selected: false,
-        neighbors: []
+    mapRows.forEach((row, cy) => {
+      row.split("").forEach((char, cx) => {
+        if (char !== "X") return;
+        const edgeNudge = ((cx * 17 + cy * 29) % 7) - 3;
+        const x = LAND_MARGIN + cx * cellW;
+        const y = LAND_MARGIN + cy * cellH;
+        territories.push({
+          id: territories.length,
+          col: cx,
+          row: cy,
+          x,
+          y,
+          w: cellW,
+          h: cellH,
+          owner: NEUTRAL,
+          army: 32 + ((cx * 13 + cy * 19) % 30),
+          selected: false,
+          coast: false,
+          pixelShade: edgeNudge,
+          neighbors: []
+        });
       });
     });
 
-    territories.forEach((a) => {
-      territories.forEach((b) => {
-        if (a.id === b.id) return;
-        const dx = Math.abs(a.col - b.col);
-        const dy = Math.abs(a.row - b.row);
-        if (dx + dy === 1 || (dx === 1 && dy === 1 && Math.random() > 0.68)) {
-          a.neighbors.push(b.id);
+    const byCell = new Map(territories.map((t) => [String(t.col) + "," + String(t.row), t]));
+    territories.forEach((territory) => {
+      const directions = [
+        [1, 0], [-1, 0], [0, 1], [0, -1],
+        [1, 1], [1, -1], [-1, 1], [-1, -1]
+      ];
+      directions.forEach(([dx, dy]) => {
+        const neighbor = byCell.get(String(territory.col + dx) + "," + String(territory.row + dy));
+        if (neighbor && (Math.abs(dx) + Math.abs(dy) === 1 || (territory.col + territory.row + neighbor.col) % 3 === 0)) {
+          territory.neighbors.push(neighbor.id);
         }
       });
+      territory.coast = territory.neighbors.length < 6;
     });
 
     return territories;

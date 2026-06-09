@@ -4,6 +4,7 @@
   function createRenderer(canvas) {
     const ctx = canvas.getContext("2d");
     const view = { scale: 1, offsetX: 0, offsetY: 0 };
+    ctx.imageSmoothingEnabled = false;
 
     function resize() {
       const rect = canvas.getBoundingClientRect();
@@ -11,9 +12,10 @@
       canvas.width = Math.floor(rect.width * dpr);
       canvas.height = Math.floor(rect.height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
       view.scale = Math.min(rect.width / 1280, rect.height / 760);
-      view.offsetX = (rect.width - 1280 * view.scale) / 2;
-      view.offsetY = (rect.height - 760 * view.scale) / 2;
+      view.offsetX = Math.floor((rect.width - 1280 * view.scale) / 2);
+      view.offsetY = Math.floor((rect.height - 760 * view.scale) / 2);
     }
 
     function screenToWorld(clientX, clientY) {
@@ -31,7 +33,7 @@
       ctx.translate(view.offsetX, view.offsetY);
       ctx.scale(view.scale, view.scale);
       drawOcean(ctx, state);
-      drawConnections(ctx, state);
+      drawPixelLandShadow(ctx, state);
       drawTerritories(ctx, state);
       drawGroups(ctx, state);
       drawEffects(ctx, state);
@@ -45,92 +47,126 @@
   }
 
   function drawOcean(ctx, state) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, state.height);
-    gradient.addColorStop(0, "#0d1722");
-    gradient.addColorStop(1, "#101820");
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = "#0b1d2b";
     ctx.fillRect(0, 0, state.width, state.height);
-
-    ctx.strokeStyle = "rgba(255,255,255,0.035)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < state.width; x += 54) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x + 80, state.height);
-      ctx.stroke();
+    ctx.fillStyle = "#0f2638";
+    for (let y = 0; y < state.height; y += 24) {
+      for (let x = (y / 24) % 2 ? 12 : 0; x < state.width; x += 48) {
+        ctx.fillRect(x, y, 24, 2);
+      }
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    for (let x = 0; x < state.width; x += 96) {
+      ctx.fillRect(x, 0, 2, state.height);
+    }
+    for (let y = 0; y < state.height; y += 96) {
+      ctx.fillRect(0, y, state.width, 2);
     }
   }
 
-  function drawConnections(ctx, state) {
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 2;
+  function drawPixelLandShadow(ctx, state) {
+    ctx.fillStyle = "rgba(0,0,0,0.24)";
     state.territories.forEach((territory) => {
-      const a = TC.Game.territoryCenter(territory);
-      territory.neighbors.forEach((id) => {
-        if (id < territory.id) return;
-        const b = TC.Game.territoryCenter(state.territories[id]);
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-      });
+      ctx.fillRect(territory.x + 5, territory.y + 6, territory.w, territory.h);
     });
   }
 
   function drawTerritories(ctx, state) {
+    const byId = new Map(state.territories.map((t) => [t.id, t]));
     state.territories.forEach((territory) => {
       const owner = state.players.find((p) => p.id === territory.owner);
       const selected = state.selectedTerritoryId === territory.id;
-      const fill = owner ? owner.color : "#5b6572";
-      ctx.save();
-      ctx.globalAlpha = owner ? 0.92 : 0.72;
-      roundRect(ctx, territory.x, territory.y, territory.w, territory.h, 10);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.lineWidth = selected ? 5 : 2;
-      ctx.strokeStyle = selected ? "#ffffff" : "rgba(255,255,255,0.28)";
-      ctx.stroke();
-      ctx.restore();
+      const base = owner ? owner.color : "#6f7d72";
+      const shade = territory.pixelShade || 0;
+      const inset = territory.coast ? 2 : 1;
 
-      const c = TC.Game.territoryCenter(territory);
-      ctx.fillStyle = "rgba(0,0,0,0.34)";
-      roundRect(ctx, c.x - 28, c.y - 13, 56, 26, 6);
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "800 15px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(formatNum(territory.army), c.x, c.y + 1);
+      ctx.fillStyle = adjustColor(base, shade * 6 - (territory.coast ? 8 : 0));
+      ctx.fillRect(territory.x + inset, territory.y + inset, territory.w - inset * 2, territory.h - inset * 2);
+
+      ctx.fillStyle = owner ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)";
+      ctx.fillRect(territory.x + inset, territory.y + inset, territory.w - inset * 2, 4);
+
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillRect(territory.x + territory.w - 4, territory.y + inset, 3, territory.h - inset * 2);
+      ctx.fillRect(territory.x + inset, territory.y + territory.h - 4, territory.w - inset * 2, 3);
+
+      drawBorders(ctx, territory, byId, state);
+
+      if (selected) {
+        ctx.strokeStyle = "#f7f3d4";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(territory.x - 2, territory.y - 2, territory.w + 4, territory.h + 4);
+      }
+
+      if (territory.army >= 70 || selected || owner) {
+        drawArmyLabel(ctx, territory, owner);
+      }
     });
+  }
+
+  function drawBorders(ctx, territory, byId, state) {
+    const owner = territory.owner;
+    const edges = [
+      [0, -1, territory.x, territory.y, territory.x + territory.w, territory.y],
+      [1, 0, territory.x + territory.w, territory.y, territory.x + territory.w, territory.y + territory.h],
+      [0, 1, territory.x, territory.y + territory.h, territory.x + territory.w, territory.y + territory.h],
+      [-1, 0, territory.x, territory.y, territory.x, territory.y + territory.h]
+    ];
+    ctx.lineWidth = 2;
+    edges.forEach(([dx, dy, x1, y1, x2, y2]) => {
+      const neighbor = state.territories.find((t) => t.col === territory.col + dx && t.row === territory.row + dy);
+      const different = !neighbor || neighbor.owner !== owner;
+      ctx.strokeStyle = different ? "rgba(5,8,10,0.72)" : "rgba(255,255,255,0.08)";
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    });
+  }
+
+  function drawArmyLabel(ctx, territory, owner) {
+    const c = TC.Game.territoryCenter(territory);
+    const label = formatNum(territory.army);
+    const width = Math.max(34, label.length * 9 + 14);
+    ctx.fillStyle = "rgba(9,12,16,0.76)";
+    ctx.fillRect(Math.floor(c.x - width / 2), Math.floor(c.y - 11), width, 22);
+    ctx.strokeStyle = owner ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.12)";
+    ctx.strokeRect(Math.floor(c.x - width / 2) + 0.5, Math.floor(c.y - 11) + 0.5, width - 1, 21);
+    ctx.fillStyle = "#f4f7fb";
+    ctx.font = "800 13px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, c.x, c.y + 1);
   }
 
   function drawGroups(ctx, state) {
     state.groups.forEach((group) => {
       const player = state.players.find((p) => p.id === group.owner);
       const selected = state.selectedGroupId === group.id;
-      ctx.strokeStyle = group.retreating ? "rgba(255,255,255,0.4)" : player.color;
-      ctx.lineWidth = selected ? 4 : 2;
+      ctx.strokeStyle = group.retreating ? "rgba(244,247,251,0.62)" : player.color;
+      ctx.lineWidth = selected ? 5 : 3;
+      ctx.setLineDash(group.retreating ? [10, 7] : []);
       ctx.beginPath();
-      ctx.setLineDash(group.retreating ? [8, 8] : []);
-      ctx.moveTo(group.x, group.y);
-      ctx.lineTo(group.targetX, group.targetY);
+      ctx.moveTo(Math.floor(group.x), Math.floor(group.y));
+      ctx.lineTo(Math.floor(group.targetX), Math.floor(group.targetY));
       ctx.stroke();
       ctx.setLineDash([]);
 
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+      ctx.fillRect(Math.floor(group.x - 12), Math.floor(group.y - 8), 28, 20);
       ctx.fillStyle = player.color;
-      ctx.beginPath();
-      ctx.arc(group.x, group.y, selected ? 16 : 13, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = selected ? "#ffffff" : "rgba(0,0,0,0.45)";
-      ctx.stroke();
+      ctx.fillRect(Math.floor(group.x - 14), Math.floor(group.y - 12), 28, 20);
+      ctx.fillStyle = selected ? "#ffffff" : "rgba(255,255,255,0.34)";
+      ctx.fillRect(Math.floor(group.x - 14), Math.floor(group.y - 12), 28, 3);
+      ctx.strokeStyle = selected ? "#f7f3d4" : "rgba(0,0,0,0.55)";
+      ctx.lineWidth = selected ? 3 : 2;
+      ctx.strokeRect(Math.floor(group.x - 14), Math.floor(group.y - 12), 28, 20);
 
-      ctx.fillStyle = "#101318";
-      ctx.font = "900 12px system-ui, sans-serif";
+      ctx.fillStyle = "#081017";
+      ctx.font = "900 11px ui-sans-serif, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(formatNum(group.army), group.x, group.y + 1);
+      ctx.fillText(formatNum(group.army), group.x, group.y - 2);
     });
   }
 
@@ -140,15 +176,14 @@
         const progress = effect.ttl / 36;
         ctx.strokeStyle = effect.color;
         ctx.globalAlpha = progress;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(effect.x, effect.y, 32 * (1 - progress) + 8, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.lineWidth = 5;
+        const size = Math.floor(36 * (1 - progress) + 12);
+        ctx.strokeRect(Math.floor(effect.x - size / 2), Math.floor(effect.y - size / 2), size, size);
         ctx.globalAlpha = 1;
       }
       if (effect.type === "text") {
         ctx.fillStyle = effect.color;
-        ctx.font = "900 18px system-ui, sans-serif";
+        ctx.font = "900 18px ui-sans-serif, system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(effect.text, effect.x, effect.y);
       }
@@ -156,30 +191,31 @@
   }
 
   function drawBanner(ctx, state) {
-    ctx.fillStyle = "rgba(0,0,0,0.42)";
-    roundRect(ctx, 24, 20, 520, 44, 8);
-    ctx.fill();
-    ctx.fillStyle = "#edf2f8";
-    ctx.font = "800 18px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(8,13,18,0.82)";
+    ctx.fillRect(24, 22, 520, 42);
+    ctx.fillStyle = state.winner !== null ? "#f4c95d" : "#f4f7fb";
+    ctx.font = "800 17px ui-sans-serif, system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(state.winner !== null ? state.message : state.message, 42, 42);
+    ctx.fillText(state.message, 42, 44);
   }
 
-  function roundRect(ctx, x, y, w, h, r) {
-    const radius = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.arcTo(x + w, y, x + w, y + h, radius);
-    ctx.arcTo(x + w, y + h, x, y + h, radius);
-    ctx.arcTo(x, y + h, x, y, radius);
-    ctx.arcTo(x, y, x + w, y, radius);
-    ctx.closePath();
+  function adjustColor(hex, amount) {
+    const clean = hex.replace("#", "");
+    const num = parseInt(clean, 16);
+    const r = clampColor((num >> 16) + amount);
+    const g = clampColor(((num >> 8) & 255) + amount);
+    const b = clampColor((num & 255) + amount);
+    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  function clampColor(value) {
+    return Math.max(0, Math.min(255, Math.round(value)));
   }
 
   function formatNum(value) {
     const n = Math.floor(value);
-    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
     return String(n);
   }
 
