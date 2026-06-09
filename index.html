@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Territory Conquest</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="Match controls">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <h1>Territory Conquest</h1>
+            <p id="matchStatus">Choose a mode, select land, and expand.</p>
+          </div>
+        </div>
+
+        <div class="identity">
+          <label>
+            Name
+            <input id="playerName" maxlength="16" value="Commander">
+          </label>
+          <label>
+            Color
+            <input id="playerColor" type="color" value="#30a2ff">
+          </label>
+        </div>
+      </section>
+
+      <section class="game-layout">
+        <aside class="panel left-panel">
+          <div class="mode-grid" role="group" aria-label="Game mode">
+            <button id="botsMode" class="primary">Bots</button>
+            <button id="hostMode">Host Online</button>
+            <button id="guestMode">Join Online</button>
+          </div>
+
+          <div class="control-group">
+            <label>
+              Attack %
+              <input id="attackSlider" type="range" min="10" max="100" step="5" value="50">
+            </label>
+            <div class="meter-line">
+              <span id="attackPercent">50%</span>
+              <span id="selectedInfo">No target</span>
+            </div>
+          </div>
+
+          <div class="control-group upgrade-grid" aria-label="Upgrades">
+            <button id="upgradeEconomy" title="Increase army income">Economy</button>
+            <button id="upgradeLogistics" title="Improve attack transfer efficiency">Logistics</button>
+            <button id="upgradeFortification" title="Improve defensive retention">Fortify</button>
+          </div>
+
+          <button id="startMatch" class="primary wide">Start Match</button>
+          <button id="resetMatch" class="wide">Reset</button>
+        </aside>
+
+        <section class="map-wrap" aria-label="World map">
+          <canvas id="gameCanvas" width="960" height="540"></canvas>
+          <div id="toast" class="toast" hidden></div>
+        </section>
+
+        <aside class="panel right-panel">
+          <h2>Leaderboard</h2>
+          <ol id="leaderboard" class="leaderboard"></ol>
+
+          <div class="stats">
+            <div><span>Army</span><strong id="armyStat">0</strong></div>
+            <div><span>Land</span><strong id="landStat">0</strong></div>
+            <div><span>Income</span><strong id="incomeStat">0/s</strong></div>
+          </div>
+
+          <div class="network-box">
+            <h2>Join Code</h2>
+            <textarea id="signalInput" placeholder="Paste connection code here"></textarea>
+            <div class="network-actions">
+              <button id="makeOffer">Create</button>
+              <button id="acceptOffer">Accept</button>
+              <button id="finishAnswer">Connect</button>
+            </div>
+            <textarea id="signalOutput" readonly placeholder="Your code appears here"></textarea>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="src/game.js"></script>
+    <script src="src/bots.js"></script>
+    <script src="src/render.js"></script>
+    <script src="src/network.js"></script>
+    <script src="src/main.js"></script>
+  </body>
+</html>
